@@ -1,0 +1,88 @@
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='banner-styles.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='iconochive.css') }}">
+
+<meta http-equiv="content-type" content="text/html;">
+<title>DreamSearch</title>
+<style>
+body,td,a,p,.h{font-family:arial,sans-serif}
+.h{font-size:20px}
+.h{color:#3366cc}
+.q{color:#00c}
+.ts td{padding:0}
+.ts{border-collapse:collapse}
+.lnc:link,.lnc:visited{color:#00c}
+.pgtab,.pgtab:hover,.pgtabselected,.pgtabside{text-align:center;text-decoration:none;color:#00c;display:block;height:27px;float:left;overflow:hidden;background:url(/web/20080402203334im_/http://www.google.com/intl/ja/images/productlinktabs.png) no-repeat;padding-top:8px}
+.pgtab{width:130px;background-position:-274px 0}
+.pgtab:hover{width:130px;background-position:-144px 0}
+.pgtabselected{width:144px}
+.pgtabside{width:3px;background-position:-404px 0}
+.ptr{cursor:pointer;cursor:hand}
+.iconl{background:url(/web/20080402203334im_/http://www.google.com/) no-repeat;overflow:hidden;height:px;width:px}
+#gbar{float:left;height:22px;padding-left:2px}
+.gbh,.gb2 div{border-top:1px solid #c9d7f1;font-size:0;height:0}
+.gbh{position:absolute;top:24px;width:100%}
+.gb2 div{margin:5px}
+#gbi{background:#fff;border:1px solid;border-color:#c9d7f1 #36c #36c #a2bae7;font-size:13px;top:24px;z-index:1000}
+#guser{padding-bottom:7px !important}
+#gbar,#guser{font-size:13px;padding-top:1px !important}
+@media all{.gb1,.gb3{height:22px;margin-right:.73em;vertical-align:top}
+.gb2 a,.gb2 b{display:block;padding:.2em .5em}}
+#gbi,.gb2{display:none;position:absolute;width:8em}
+.gb2{z-index:1001}
+#gbar a{color:#00c}
+.gb2 a,.gb3 a{text-decoration:none}
+#gbar .gb2 a:hover{background:#36c;color:#fff;display:block}
+</style>
+<style>
+    ol {
+        padding-left: 0; /* Removes padding on the left */
+        margin-left: 0; /* Removes any margin on the left, if present */
+    }
+</style>
+<style>
+    a:link {
+        color: #32e2e2;
+    }
+    a:visited {
+        color: #9dcdcd;
+    }   
+</style>
+</head>
+<body bgcolor="#344c4c" style="color:rgb(190, 190, 190)" topmargin="3" marginheight="3">
+<br>
+<table border="0" cellpadding="0" cellspacing="0" id="mn">
+    <tbody>
+        <tr>
+            <td width="75" rowspan="1" valign="top"><h1><a href="?query" id="logo" title="Go to DreamSearch Home"><img src="{{ url_for('static', filename='logosmall.png') }}" alt="" height="67" width="70" style="border:0"></a></h1></td>
+            <td width="559" valign="top" style="padding-left:9px">
+                <form action="/" name="gs" id="tsf" method="GET" style="display:block;margin:0;background:none">
+                    <table border="0" cellpadding="0" cellspacing="0" id="sbhost" style="margin-top:18px;position:relative">
+                        <tbody>
+                            <tr>
+                                <td valign="bottom" class="lst-td" width="100%">
+                                    <div style="position:relative">
+                                        <input class="lst" value="{{ title }}" title="Search" autocomplete="off" type="text" name="query" maxlength="2048" dir="ltr" spellcheck="false" style="width:99%;background-color:#2d3838; color:#ffffff">
+                                    </div>
+                                    </td>
+                                    <td>
+                                        <div class="">
+                                            <div class="">
+                                                <input class="" value="Search" type="submit">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </form>
+                </td>
+        </tr>
+    </tbody>
+</table>
+<ol style="list-style: none; padding-left: 0; width:750px;">
+    {% include 'searchresult.htm' %}
+</ol>
+</body>
+</html>

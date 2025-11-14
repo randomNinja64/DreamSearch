@@ -1,0 +1,7 @@
+{% for result in searchResults %} 
+<li class="result">
+    <h3 style="margin:0; font-size: 16px; font-weight: normal"><a href="{{ result.URL }}">{{ result.Title }}</a></h3>
+    <div class="s" style="font-size:13px;">{{ result.Snippet }}<br><div><cite style="color: #0c98bb;
+  font-style: normal;">{{ result.URL }}/</cite></div></div>
+</li>
+{% endfor %}
