@@ -1,5 +1,6 @@
 import os
 import json
+from urllib.parse import urlparse
 from openai import OpenAI
 from bs4 import BeautifulSoup
 from flask import Flask, render_template, session
@@ -37,12 +38,51 @@ class DreamEngine:
         # Ensure the cache directory exists
         os.makedirs(self.cache_dir, exist_ok=True)
     
-    # Function to find a result by URL/path and return the description
-    def find_description_by_url(self, url):
+    def _sanitize_summary(self, summary):
+        """Remove hidden reasoning tags like <think>...</think> and similar artifacts."""
+        if not summary:
+            return summary
+
+        banned_blocks = [
+            r"<\s*think[^>]*>.*?<\s*/\s*think\s*>",
+            r"<\s*reflection[^>]*>.*?<\s*/\s*reflection\s*>",
+            r"<\s*reasoning[^>]*>.*?<\s*/\s*reasoning\s*>",
+            r"<\s*analysis[^>]*>.*?<\s*/\s*analysis\s*>",
+        ]
+
+        cleaned_summary = summary
+        for pattern in banned_blocks:
+            cleaned_summary = re.sub(pattern, "", cleaned_summary, flags=re.IGNORECASE | re.DOTALL)
+
+        # Remove any standalone opening/closing tags left behind from the banned list
+        cleaned_summary = re.sub(r"</?\s*(think|reflection|reasoning|analysis)\s*>", "", cleaned_summary, flags=re.IGNORECASE)
+
+        # Collapse excess whitespace
+        cleaned_summary = re.sub(r"\s{2,}", " ", cleaned_summary).strip()
+
+        return cleaned_summary or ""
+    
+    def _find_result_context(self, url, path):
+        """Match the requested URL/path to the stored search results."""
+        normalized_host = (url or "").lower().strip("/")
+        normalized_path = path if path else "/"
+
         for result in self.resultsList:
-            if url in result.URL:
-                return result.Snippet
-        return url
+            parsed = urlparse(result.URL)
+            result_host = parsed.netloc.lower()
+            result_path = parsed.path if parsed.path else "/"
+
+            if result_host != normalized_host:
+                continue
+
+            if normalized_path == result_path or normalized_path.startswith(result_path.rstrip("/") + "/"):
+                return {
+                    "title": result.Title,
+                    "snippet": result.Snippet,
+                    "path": result_path
+                }
+
+        return None
 
     def getImageURL(self, searxNGURL, query):
         # Set a custom User-Agent string
@@ -201,7 +241,8 @@ STYLING/CSS (sample):
             max_tokens=600
         )
         
-        return summary_completion.choices[0].message.content.strip()
+        raw_summary = summary_completion.choices[0].message.content.strip()
+        return self._sanitize_summary(raw_summary)
     
     def get_page(self, url, path):
         # Check the cache first
@@ -212,17 +253,50 @@ STYLING/CSS (sample):
             session['last_page_summary'] = summary
             return cached_page
 
-        # Get context from the last page summary if available
-        context_info = ""
-        if 'last_page_summary' in session and session['last_page_summary']:
-            context_info = f"The user just came from a page with this content: {session['last_page_summary']}. Use this as context for continuity, but focus primarily on the current URL and path. "
-        
-        # Get site description from search results
-        site_desc = self.find_description_by_url(url + path)
+        # Normalize URL + path for downstream use
+        path = path or "/"
+        if not path.startswith("/"):
+            path = "/" + path
+        full_resource = f"{url}{path}"
 
-        print(f"Site description: {site_desc}")
-        if context_info:
-            print(f"Context from last page: {session['last_page_summary']}")
+        # Build context from search results and browsing history
+        context_segments = []
+
+        result_context = self._find_result_context(url, path)
+        if result_context:
+            context_segments.append(
+                "Search Result Context: "
+                f"Title: '{result_context['title']}'. "
+                f"Description: '{result_context['snippet']}'. "
+                f"Path: '{result_context['path']}'. "
+                "Use all of these details when determining the site's purpose and structure."
+            )
+
+        # Get context from the last page summary if available
+        last_summary = session.get('last_page_summary')
+        if last_summary:
+            clean_summary = self._sanitize_summary(last_summary)
+            if clean_summary != last_summary:
+                session['last_page_summary'] = clean_summary
+            context_segments.append(
+                "Browsing Continuity: "
+                f"The previous page on this site was summarized as '{clean_summary}'. "
+                f"The user has now navigated to {full_resource}; treat this URL+path as the primary signal. "
+                "Assume this is a different part of the site (could be higher, lower, or lateral in the structure) that should feel connected yet distinct."
+            )
+
+        if not context_segments:
+            context_segments.append(
+                f"No stored metadata exists; rely on the domain '{url}' and requested path '{path}' to infer intent."
+            )
+
+        context_info = " ".join(context_segments)
+        
+        if result_context:
+            print(f"Search result context matched for {full_resource}")
+        else:
+            print(f"No direct search context for {full_resource}")
+        print(f"Context info: {context_info}")
 
         # Construct the prompt
         prompt = (
@@ -234,8 +308,11 @@ STYLING/CSS (sample):
             "Make the page look nice, unique, and creative using internal inline CSS stylesheets; avoid generic and boring appearances. The use of CSS animation is also acceptable. "
             "If JavaScript is needed for interactivity (including but not limited to forms or pop-ups), include inline scripts that complement the page's functionality. "
             "The use of images should be limited, and when used, should be linked from external sources. Images must be described with appropriate alt-text. "
-            f"When generating site content, keep the description '{site_desc}' in mind. Though, the URL should be prioritized to determine the website's subject matter. "
-            f"{context_info}"
+            "When generating site content, treat all provided context as information learned from previously visited pages on the same site, but let the requested URL plus path dictate hierarchy and focus. "
+            "Maintain continuity and references, yet ensure this is a new page with distinct purpose, structure, and copy that plausibly follows from that context even if it sits above, below, or beside it in site structure. "
+            "Do not copy prior wording verbatim; instead, expand upon or riff off it the way a different subpage would. "
+            f"{context_info} "
+            "If any contextual information conflicts, prioritize the meaning implied by the URL/domain and requested path."
         )
 
         # Generate the page
