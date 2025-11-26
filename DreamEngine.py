@@ -27,13 +27,13 @@ class DreamEngine:
             "Instead, you create webpages that are completely realistic and look as if they really existed on the web. "
             "Your responses should consist exclusively of HTML code, beginning with <!DOCTYPE html> and ending with </html>. "
             "When generating content such as articles, blog posts, etc., provide detailed and informative text rather than summaries or placeholders. "
-            "You use few images in your HTML, CSS or JS, and when you do use an image it'll be linked from a real website instead and described with appropriate alt-text. "
-            "Link to very few external resources, CSS and JS should ideally be internal in <style>/<script> tags and not linked from elsewhere. "
+            "You use few images in your HTML, CSS or JS, and when you do use an image it'll be linked from a real website and described with appropriate alt-text. "
+            "Link to very few external resources, CSS and JS should ideally be internal in <style>/<script> tags and not linked from elsewhere."
         )
         
         self.resultsList = []
 
-        self.searxNGInstance = "https://searx.be/"
+        self.searxNGInstance = ""
 
         # Ensure the cache directory exists
         os.makedirs(self.cache_dir, exist_ok=True)
@@ -253,22 +253,25 @@ STYLING/CSS (sample):
             session['last_page_summary'] = summary
             return cached_page
 
-        # Normalize URL + path for downstream use
-        path = path or "/"
-        if not path.startswith("/"):
-            path = "/" + path
-        full_resource = f"{url}{path}"
+        # Use the result's hypothetical URL (if found), else fallback to the requested URL+path
+        result_context = self._find_result_context(url, path)
+        if result_context and 'path' in result_context:
+            full_resource = f"{url}{result_context['path']}"
+        else:
+            path = path or "/"
+            if not path.startswith("/"):
+                path = "/" + path
+            full_resource = f"{url}{path}"
 
         # Build context from search results and browsing history
         context_segments = []
 
-        result_context = self._find_result_context(url, path)
         if result_context:
             context_segments.append(
                 "Search Result Context: "
                 f"Title: '{result_context['title']}'. "
                 f"Description: '{result_context['snippet']}'. "
-                f"Path: '{result_context['path']}'. "
+                f"URL: '{full_resource}'. "
                 "Use all of these details when determining the site's purpose and structure."
             )
 
@@ -344,14 +347,14 @@ STYLING/CSS (sample):
                         "You are a helpful assistant that strictly returns valid JSON with exactly three keys: "
                         "title, snippet, url. No extra text. "
                         "When generating a single search result, follow these guidelines:\n\n"
-                        "1) Title: Create a short, engaging title (4 to 12 tokens) relevant to the query; titles should be creative and not too close to the query."
+                        "1) Title: Create a short, engaging title (4 to 12 tokens) relevant to the query; titles should be creative and not too close to the query. "
                         "It should feel authentic without revealing the website is fictitious.\n\n"
                         "2) Snippet: Provide a concise, single-paragraph description (3 to 5 sentences) that outlines the website’s content "
-                        "as if from a search engine result. Avoid referencing real websites or indicating that the site is hypothetical.\n\n"
+                        "as if from a search engine result. Avoid indicating that the site is hypothetical.\n\n"
                         "3) URL: Provide a plausible URL in the format 'http://website.com/etc', "
-                        "unique and relevant to the topic. Avoid referencing real websites or indicating that the site is hypothetical.\n\n"
-                        "Return the result strictly in JSON with the keys 'title', 'snippet', and 'url'—in that order—"
-                        "with no additional text or formatting."
+                        "unique and relevant to the topic.\n\n"
+                        "Avoid indicating that the site is hypothetical. "
+                        "Return the result strictly in JSON with the keys 'title', 'snippet', and 'url'—in that order—with no additional text or formatting."
                     ),
                 },
                 {
